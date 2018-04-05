@@ -1,0 +1,11 @@
+.vasttrafik div {
+    font-size: 16px;
+}
+  
+.vasttrafik table {
+    border-spacing: 16px 2px;
+}
+
+.vasttrafik .title {
+    text-align: left;
+}
