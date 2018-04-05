@@ -18,11 +18,33 @@ You need to obtain an "api-key"(Nyckel) and "secret"(Hemlighet) in order to use 
     A set of key/value pairs that represents trip between two stations.
     - Note: Please copy the complete name of station from vasttrafik website to prevent any missbehaviour, e.g instead of "liseberg" use "Liseberg, Göteborg"
 
+* updateInterval: Int  
+    determine how often should the module calls vasttrifk api, in milliseconds. Default is 120,000.
+
 * showAccessbility: Boolean  
     show/hide accessibility icon.
 
-* updateInterval: Int  
-    determine how often should the module calls vasttrifk api, in milliseconds.
+* useVas: Boolean  
+    To exclude to exclude trips with Västtågen, set this parameter to false.
+
+* useLDTrain: Boolean  
+    To exclude trips with long distance trains, set this parameter to false.
+
+* useRegTrain: Boolean  
+    To exclude trips with regional trains, set this parameter to false.
+
+* useBus: Boolean  
+    To exclude trips with buses, set this parameter to false.
+
+* useBoat: Boolean  
+    To exclude trips with boats, set this parameter to false.
+
+* useTram: Boolean  
+    To exclude trips with trams, set this parameter to false.
+
+* excludeDR: Boolean  
+    To exclude journeys which require tel. registration, set this parameter to false.
+
 
 
 [logo]: https://github.com/massih/vasttrafik-module/blob/master/screenshots/screenshot.PNG "Screenshot"

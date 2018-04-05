@@ -27,7 +27,7 @@ Module.register("vasttrafik", {
 				type: "GET"
 			},
 			arrival: {
-				url: path + "arrivalBoard?", 
+				url: path + "arrivalBoard?",
 				type: "GET"
 			},
 		};
@@ -74,6 +74,10 @@ Module.register("vasttrafik", {
 		];
 	},
 
+	getScripts: function() {
+		return [];
+	},
+
 	createModuleTitle: function(wrapper) {
 		let title = document.createElement("div");
 		title.innerHTML = this.station + " departure:";
@@ -106,7 +110,7 @@ Module.register("vasttrafik", {
 			<td align="center">${data.time}</td>
 		`;
 		if (this.config.showAccessibility){
-			row.children[0].insertAdjacentHTML("afterend", 
+			row.children[0].insertAdjacentHTML("afterend",
 				`<td align="center">${this.iconset[data.accessibility] || ""}</td>`
 			);
 		}
@@ -132,7 +136,7 @@ Module.register("vasttrafik", {
 					Log.error(self.name + ": Incorrect Key or Secret");
 					break;
 				default:
-					Log.error(self.name + ": Cannot connect to Vastrafik server");	
+					Log.error(self.name + ": Cannot connect to Vastrafik server");
 				}
 			}
 		};
