@@ -10,22 +10,19 @@ You need to obtain an "api-key"(Nyckel) and "secret"(Hemlighet) in order to use 
 
 
 ## Configs:
-* departure: ["station1", "station2",...]
-
-    a list of station name(s) to show their timetable
+* departure: ["station1", "station2",...]  
+    A list of station name(s) to show their timetable
     - Note: Please copy the complete name of station from vasttrafik website to prevent any missbehaviour, e.g instead of "liseberg" use "Liseberg, Göteborg"
 
-* arrival: {"fromStation": "toStation",...}
-    
-    a set of key/value pairs that represents trip between two stations
+* arrival: {"fromStation": "toStation",...}      
+    A set of key/value pairs that represents trip between two stations.
     - Note: Please copy the complete name of station from vasttrafik website to prevent any missbehaviour, e.g instead of "liseberg" use "Liseberg, Göteborg"
 
-* showAccessbility: Boolean 
+* showAccessbility: Boolean  
+    show/hide accessibility icon.
 
-    show/hide accessibility icon
-* updateInterval: Int
-
-    determine how often should the module call vasttrifk api
+* updateInterval: Int  
+    determine how often should the module calls vasttrifk api, in milliseconds.
 
 
 [logo]: https://github.com/massih/vasttrafik-module/blob/master/screenshots/screenshot.PNG "Screenshot"
