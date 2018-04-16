@@ -16,9 +16,7 @@ Module.register("vasttrafik", {
 
 	start: function() {
 		let path = this.config.apiBaseUrl + this.config.apiVersion;
-		this.loaded = false;
 		this.stationsToShow = this.getStationsToShow();
-		Log.log(this.stationsToShow);
 		this.tripData = {};
 		this.stations = {};
 		this.rotateIndex = null;
@@ -56,15 +54,19 @@ Module.register("vasttrafik", {
 			wrapper.innerHTML = this.iconset.spinner;
 			return wrapper;
 		}
-
+		Log.log(this.tripData);
 		if (!this.config.rotateTimeTable) {
 			for (let stationName in this.tripData) {
-				this.renderTimeTable(wrapper, stationName);
+				for (let tripType in this.tripData[stationName]) {
+					if(Object.keys(this.tripData[stationName][tripType]).length > 0){
+						this.renderTimeTable(wrapper, stationName, tripType);
+					}
+				}
 			}
 		} else {
-			let stationName = this.stationsToShow[this.rotateIndex];
-			if (stationName in this.tripData) {
-				this.renderTimeTable(wrapper, stationName);
+			let station = this.stationsToShow[this.rotateIndex];
+			if (station.name in this.tripData && station.type in this.tripData[station.name]) {
+				this.renderTimeTable(wrapper, station.name, station.type);
 			}
 		}
 		return wrapper;
@@ -92,25 +94,24 @@ Module.register("vasttrafik", {
 		};
 	},
 
-	renderTimeTable: function(wrapper, stationName) {
+	renderTimeTable: function(wrapper, stationName, tripType) {
 		let table = document.createElement("table");
 		table.className = "small";
 
-		this.createModuleTitle(wrapper, stationName);
+		this.createModuleTitle(wrapper, stationName, tripType);
 		this.createTableHeader(table);
-		Log.log("stationName:");
-		Log.log(stationName);
-		for (let trips of this.tripData[stationName]) {
-			for (let trip of trips) {
-				this.fillTable(trip, table);
+		let stop = this.tripData[stationName][tripType];
+		for (let destination in stop) {
+			for (let trip of stop[destination]) {
+				this.fillTable(trip, tripType, destination, table);
 			}
 		}
 		wrapper.appendChild(table);
 	},
 
-	createModuleTitle: function(wrapper, stationName) {
+	createModuleTitle: function(wrapper, stationName, tripType) {
 		let title = document.createElement("div");
-		title.innerHTML = stationName + " departure:";
+		title.innerHTML = `${stationName} ${tripType}:`;
 		title.className = "title";
 		wrapper.appendChild(title);
 	},
@@ -130,12 +131,12 @@ Module.register("vasttrafik", {
 		table.appendChild(row);
 	},
 
-	fillTable: function(data, table) {
+	fillTable: function(data, tripType, destination, table) {
 		let row = document.createElement("tr");
 		row.innerHTML = `
 			<td align="center">${this.iconset[data.type]}</td>
 			<td align="center">${data.sname}</td>
-			<td align="center">${data.direction}</td>
+			<td align="center">${(data.direction) ? data.direction : destination}</td>
 			<td align="center">${data.track}</td>
 			<td align="center">${data.time}</td>
 		`;
@@ -151,15 +152,20 @@ Module.register("vasttrafik", {
 		let self = this;
 		this.rotateIndex = -1;
 		setInterval(function() {
-			Log.log("inside startRotation interval");
 			self.rotateIndex = (self.rotateIndex + 1) % self.stationsToShow.length;
 			self.updateDom(1000);
 		}, this.config.rotationPeriod);
 	},
 
 	getStationsToShow: function() {
-		let notUnique = this.config.departure.concat(Object.keys(this.config.arrival));
-		return notUnique.filter((elem, pos, arr) => arr.indexOf(elem) == pos);
+		let allStops = [];
+		for (station in this.config.arrival) {
+			allStops.push({name: station, type: "arrival"});
+		}
+		for (station in this.config.departure) {
+			allStops.push({name: station, type: "departure"});
+		}
+		return allStops;
 	},
 
 	getAccessToken: function() {
@@ -171,11 +177,7 @@ Module.register("vasttrafik", {
 				switch (this.status) {
 				case 200:
 					self.authData = JSON.parse(this.response);
-					if (!self.loaded) {
-						self.getStationsId();
-					} else {
-						self.getDepartureData();
-					}
+					self.getStationsId();
 					break;
 				case 401:
 					Log.error(self.name + ": Incorrect Key or Secret");
@@ -189,20 +191,26 @@ Module.register("vasttrafik", {
 	},
 
 	getStationsId: function() {
-		let auth = "Bearer " + this.authData.access_token;
-		for (let station of this.config.departure) {
-			this.requestSationsId(auth, station, "departure");
+		for (let station in this.config.departure) {
+			this.requestSationsId(station, "departure")
+			if (this.config.departure[station] != "ALL") {
+				this.requestSationsId(this.config.departure[station], "departure", station);
+			}
 		}
 		for (let fromStation in this.config.arrival) {
-			Log.log("fromStation: " + fromStation);
-			Log.log("toStation: " + this.config.arrival[fromStation]);
-			this.requestSationsId(auth, fromStation, "arrival");
-			this.requestSationsId(auth, this.config.arrival[fromStation], "arrival", fromStation);
+			this.requestSationsId(fromStation, "arrival");
+			this.requestSationsId(this.config.arrival[fromStation], "arrival", fromStation);
 		}
 	},
 
-	requestSationsId: function(auth, station, stationType, fromStation) {
+	requestSationsId: function(station, tripType, fromStation) {
+		if (station in this.stations) {
+			this.handleStationResponse(station, tripType, fromStation);
+			return;
+		}
+
 		let self = this;
+		let auth = "Bearer " + this.authData.access_token;
 		let param = this.getString({
 			input: station,
 			format: "json"
@@ -216,15 +224,7 @@ Module.register("vasttrafik", {
 					let stationInfo = (res.LocationList.StopLocation)[0];
 					// using the first station in the list as the target
 					self.stations[station] = stationInfo.id;
-					if (stationType === "arrival") {
-						let fStation = (fromStation) ? fromStation : station;
-						let tStation = (fromStation) ? station : self.config.arrival[station];
-						if ((fStation in self.stations) && (tStation in self.stations)) {
-							self.getArrivalData(fStation, tStation);
-						}
-					}else {
-						self.getDepartureData(station);
-					}
+					self.handleStationResponse(station, tripType, fromStation)
 					break;
 				default:
 					Log.error(self.name + ": Can not get Station ID --> "+ this.status);
@@ -234,12 +234,43 @@ Module.register("vasttrafik", {
 		req.send();
 	},
 
-	getDepartureData: function(stationName) {
+	handleStationResponse: function(station, tripType, fromStation) {
+		switch (tripType) {
+		case "arrival":
+			let fStation = (fromStation) ? fromStation : station;
+			let tStation = (fromStation) ? station : this.config.arrival[station];
+			if ((fStation in this.stations) && (tStation in this.stations)) {
+				this.getArrivalData(fStation, tStation);
+			}
+			break;
+		case "departure":
+			if (fromStation) {
+				if (fromStation in this.stations) {
+					this.getDepartureData(fromStation, station);
+				}
+			}else {
+				if (this.config.departure[station] === "ALL") {
+					this.getDepartureData(station);
+				} else if (this.config.departure[station] in this.stations) {
+					this.getDepartureData(station, this.config.departure[station]);
+				}
+			}
+			break;
+		default:
+			Log.error(self.name + ": Something went horribly wrong --> "+ tripType);
+			break;
+		}
+	},
+
+	getDepartureData: function(stationName, direction) {
 		let self = this;
 		let param = this.getString(Object.assign({
 			id: this.stations[stationName],
 			format: "json"
 		}, this.getDateParam));
+		if (direction) {
+			param["direction"] = direction;
+		}
 		let auth = "Bearer " + this.authData.access_token;
 		let req = this.getReqObj("departure", auth, param);
 		req.onreadystatechange = function(){
@@ -247,9 +278,12 @@ Module.register("vasttrafik", {
 				switch (this.status) {
 				case 200:
 					if (!(stationName in self.tripData)) {
-						self.tripData[stationName] = [];
+						self.tripData[stationName] = {
+							departure: {},
+							arrival: {}
+						};
 					}
-					self.tripData[stationName].push((JSON.parse(this.response)).DepartureBoard.Departure);
+					self.tripData[stationName]["departure"][(direction) ? direction : "departure"] = (JSON.parse(this.response)).DepartureBoard.Departure;
 					if (self.config.rotateTimeTable) {
 						if (self.rotateIndex === null) {
 							self.startRotation();
@@ -280,9 +314,11 @@ Module.register("vasttrafik", {
 				switch (this.status) {
 				case 200:
 					if (!(fromStation in self.tripData)) {
-						self.tripData[fromStation] = [];
-					}
-					self.tripData[fromStation].push((JSON.parse(this.response)).ArrivalBoard.Arrival);
+						self.tripData[fromStation] = {
+							departure: {},
+							arrival: {}
+						};					}
+					self.tripData[fromStation]["arrival"][toStation] = (JSON.parse(this.response)).ArrivalBoard.Arrival;
 					if (self.config.rotateTimeTable) {
 						if (self.rotateIndex === null) {
 							self.startRotation();
